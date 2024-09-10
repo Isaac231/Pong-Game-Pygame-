@@ -1,0 +1,281 @@
+from random import randint
+
+import pygame
+from config import *
+
+
+class Player(pygame.sprite.Sprite):
+    def __init__(self, game, x, y):
+        super().__init__()
+
+        self.game = game
+        self.group = self.game.all_sprite
+        self.solo_group = self.game.all_player
+
+        self.player_width = tile_size
+        self.player_height = tile_size * 3
+
+        self.image = pygame.Surface((self.player_width, self.player_height))
+        self.image.fill(white)
+
+        self.x = x
+        self.y = y
+        self.rect = self.image.get_rect()
+        self.rect.x = self.x
+        self.rect.y = self.y
+
+        self.color = ()
+        self.r = 1
+        self.g = 1
+        self.b = 1
+
+    def update(self):
+        self.movement()
+
+        if 254 >= self.r >= 1 and self.g == 1 and self.b == 1: # r
+            self.r += 1
+            self.color = (self.r, self.g, self.b)
+        elif self.r <= 255 and 254 >= self.g >= 1 and self.b == 1: # g
+            self.r -= 1
+            self.g += 1
+            self.color = (self.r, self.g, self.b)
+        elif self.g <= 255 and self.r == 1 and 254 >= self.b >= 1: # b
+            self.g -= 1
+            self.b += 1
+            self.color = (self.r, self.g, self.b)
+        elif self.b == 255 and self.g == 1 and 1 <= self.r <= 254: # r + b
+            self.r += 1
+            self.color = (self.r, self.g, self.b)
+        elif self.b <= 255 and self.r == 255 and 1 <= self.g <= 254: #r + g
+            self.g += 1
+            self.b -= 1
+            self.color = (self.r, self.g, self.b)
+        elif self.g == 255 and self.r <= 255 and 1 <= self.b <= 254:  # g + b
+            self.r -= 1
+            self.b += 1
+            self.color = (self.r, self.g, self.b)
+        elif self.g == 255 and self.b == 255 and 1 <= self.r <= 254:
+            self.r +=1
+            self.color = (self.r, self.g, self.b)
+        elif self.g <= 255 and self.b <= 255 and self.r <= 255:
+            self.r -= 1
+            self.g -= 1
+            self.b -= 1
+            self.color = (self.r, self.g, self.b)
+
+        self.image.fill(self.color)
+
+    def movement(self):
+        key = pygame.key.get_pressed()
+
+        if key[pygame.K_w]:
+            self.rect.y -= entity_speed
+        if key[pygame.K_s]:
+            self.rect.y += entity_speed
+
+        self.rect.y = max(0, min(screen_height - self.player_height, self.rect.y))
+
+
+class Ball(pygame.sprite.Sprite):
+    def __init__(self, game, ball_type: str = 'main'):
+        super().__init__()
+
+        self.game = game
+        self.ball_type = ball_type
+        self.group = self.game.all_sprite
+        self.solo_group = self.game.all_ball
+
+        self.ball_width = tile_size
+        self.ball_height = tile_size
+
+        self.r = 1
+        self.g = 1
+        self.b = 1
+        self.color = white
+        self.image = pygame.Surface((self.ball_width, self.ball_height))
+        self.image.fill(self.color)
+        self.rect = self.image.get_rect(topleft=(320, 176 + tile_size))
+
+        random = randint(1, 2)
+        if random == 1:
+            self.ball_direction = 'right'
+        else:
+            self.ball_direction = 'left'
+
+        self.ball_vertical = ''
+        self.ball_speedup = 0
+
+        self.is_out = False
+        self.is_ball_resets = False
+        self.is_scored = False
+        self.frame_count = 0
+        self.countdown = 3
+        self.winner = ''
+
+    def update(self):
+        if self.ball_type == 'intro':
+            self.color_change()
+            self.intro_movement()
+        else:
+            self.movement()
+            self.ball_reset()
+
+    def color_change(self):
+        if 254 >= self.r >= 1 and self.g == 1 and self.b == 1: # r
+            self.r += 1
+            self.color = (self.r, self.g, self.b)
+        elif self.r <= 255 and 254 >= self.g >= 1 and self.b == 1: # g
+            self.r -= 1
+            self.g += 1
+            self.color = (self.r, self.g, self.b)
+        elif self.g <= 255 and self.r == 1 and 254 >= self.b >= 1: # b
+            self.g -= 1
+            self.b += 1
+            self.color = (self.r, self.g, self.b)
+        elif self.b == 255 and self.g == 1 and 1 <= self.r <= 254: # r + b
+            self.r += 1
+            self.color = (self.r, self.g, self.b)
+        elif self.b <= 255 and self.r == 255 and 1 <= self.g <= 254: #r + g
+            self.g += 1
+            self.b -= 1
+            self.color = (self.r, self.g, self.b)
+        elif self.g == 255 and self.r <= 255 and 1 <= self.b <= 254:  # g + b
+            self.r -= 1
+            self.b += 1
+            self.color = (self.r, self.g, self.b)
+        elif self.g == 255 and self.b == 255 and 1 <= self.r <= 254:
+            self.r +=1
+            self.color = (self.r, self.g, self.b)
+        elif self.g <= 255 and self.b <= 255 and self.r <= 255:
+            self.r -= 1
+            self.g -= 1
+            self.b -= 1
+            self.color = (self.r, self.g, self.b)
+
+        self.image.fill(self.color)
+
+    def movement(self):
+        if not self.is_out:
+            if self.ball_direction == 'left':
+                self.rect.x -= ball_speed + self.ball_speedup
+            elif self.ball_direction == 'right':
+                self.rect.x += ball_speed + self.ball_speedup
+
+            if self.ball_vertical == 'up':
+                self.rect.y -= ball_speed + self.ball_speedup
+            elif self.ball_vertical == 'down':
+                self.rect.y += ball_speed + self.ball_speedup
+
+        self.rect.x = max(0, min(screen_width - self.ball_width, self.rect.x))
+        self.rect.y = max(0, min(screen_height - self.ball_height, self.rect.y))
+
+        if self.rect.x == 0 or self.rect.x == screen_width - tile_size:
+            self.is_scored = True
+
+    def intro_movement(self):
+        if self.ball_direction == 'left':
+            self.rect.x -= 8
+        elif self.ball_direction == 'right':
+            self.rect.x += 8
+
+        if self.ball_vertical == 'up':
+            self.rect.y -= 8
+        elif self.ball_vertical == 'down':
+            self.rect.y += 8
+
+        self.rect.x = max(0, min(screen_width - self.ball_width, self.rect.x))
+        self.rect.y = max(0, min(screen_height - self.ball_height, self.rect.y))
+
+        if self.rect.x == 0:
+            self.ball_direction = 'right'
+            self.ball_vertical = 'up' if randint(1, 2) == 1 else 'down'
+            self.ball_vertical = self.ball_vertical if randint(1, 2) == 1 else ''
+
+        if self.rect.x == screen_width - tile_size:
+            self.ball_direction = 'left'
+            self.ball_vertical = 'up' if randint(1, 2) == 1 else 'down'
+            self.ball_vertical = self.ball_vertical if randint(1, 2) == 1 else ''
+
+        if self.rect.y == 0:
+            self.ball_vertical = 'down'
+            self.ball_direction = 'left' if randint(1, 2) == 1 else 'right'
+            self.ball_direction = self.ball_direction if randint(1, 2) == 1 else ''
+
+        if self.rect.y == screen_height - tile_size:
+            self.ball_vertical = 'up'
+            self.ball_direction = 'left' if randint(1, 2) == 1 else 'right'
+            self.ball_direction = self.ball_direction if randint(1, 2) == 1 else ''
+
+    def ball_reset(self):
+            if self.is_ball_resets:
+                self.ball_vertical = ''
+                self.rect.x = 320
+                self.rect.y = 176 + tile_size * 1
+                self.ball_speedup = 0
+                self.is_ball_resets = False
+
+                if self.is_scored:
+                    if self.ball_direction == 'right':
+                        self.game.player_score += 1
+                        self.winner = 'Player 1'
+                    if self.ball_direction == 'left':
+                        self.game.enemy_score += 1
+                        self.winner = 'Player 2'
+                    self.is_scored = False
+
+            if self.rect.x == 0:
+                self.is_out = True
+                self.winner = 'Player 2'
+
+
+            if self.rect.x == screen_width - tile_size:
+                self.is_out = True
+                self.winner = 'Player 1'
+
+            if self.rect.y == 0:
+                self.ball_vertical = 'down'
+
+            if self.rect.y == screen_height - tile_size:
+                self.ball_vertical = 'up'
+
+
+
+
+
+class Enemy(pygame.sprite.Sprite):
+    def __init__(self, game, x, y):
+        super().__init__()
+
+        self.game = game
+        self.group = self.game.all_sprite
+        self.solo_group = self.game.all_enemy
+
+        self.enemy_width = tile_size
+        self.enemy_height = tile_size * 3
+
+        self.image = pygame.Surface((self.enemy_width, self.enemy_height))
+        self.image.fill(white)
+
+        self.x = x
+        self.y = y
+        self.rect = self.image.get_rect()
+        self.rect.x = self.x
+        self.rect.y = self.y
+
+    def update(self):
+        self.movement()
+
+    def movement(self):
+        key = pygame.key.get_pressed()
+
+        if key[pygame.K_UP]:
+            self.rect.y -= entity_speed
+        if key[pygame.K_DOWN]:
+            self.rect.y += entity_speed
+        if key[pygame.K_RSHIFT]:
+            self.enemy_height += tile_size
+            self.image = pygame.Surface((self.enemy_width, self.enemy_height))
+            self.image.fill(white)
+
+
+        self.rect.y = max(0, min(screen_height - self.enemy_height, self.rect.y))
