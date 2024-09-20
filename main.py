@@ -21,20 +21,14 @@ class Game:
         self.font2 = pygame.font.Font(self.font_face2, 40)
         self.font3 = pygame.font.Font(self.font_face2, 80)
         self.font4 = pygame.font.Font(self.font_face2, 15)
+        self.font5 = pygame.font.Font(self.font_face2, 25)
 
         self.running = False
         self.is_paused = False
         self.is_intro = True
         self.is_start_pressed = False
-        self.color = white
-        self.color2 = white
-        self.title_txt = None
-        self.start_txt = None
+        self.is_game_over = False
         self.winner_txt = None
-        self.countdown_txt = None
-        self.paused_txt = None
-        self.player_scoreboard = None
-        self.enemy_scoreboard = None
         self.counter1 = 0
         self.counter2 = 0
         self.counter3 = 0
@@ -43,6 +37,7 @@ class Game:
         self.font_size = 15
         self.player_score = 0
         self.enemy_score = 0
+        self.max_score = 10
 
         self.all_sprite = pygame.sprite.Group()
         self.all_player = pygame.sprite.GroupSingle()
@@ -75,7 +70,7 @@ class Game:
                         self.is_start_pressed = True
                         self.counter2 = 0
 
-            if event.type == pygame.KEYDOWN:  # pauses the game
+            if event.type == pygame.KEYDOWN and not self.is_game_over:  # pauses the game
                 if event.key == pygame.K_SPACE:
                     self.is_paused = not self.is_paused
 
@@ -101,10 +96,10 @@ class Game:
 
         if self.ball.is_out:
             self.winner_txt = self.font2.render(f"{self.ball.winner} scores!", True, white)
-            self.countdown_txt = self.font1.render(f"{self.ball.countdown}", True, white)
+            countdown_txt = self.font1.render(f"{self.ball.countdown}", True, white)
 
             self.screen.blit(self.winner_txt, (320 - (tile_size * 8), 176 - (tile_size * 2)))
-            self.screen.blit(self.countdown_txt, (320 - (tile_size * 2), 176 - tile_size))
+            self.screen.blit(countdown_txt, (320 - (tile_size * 2), 176 - tile_size))
 
         self.game_paused()
         self.score_board()
@@ -139,11 +134,11 @@ class Game:
                 self.ball.ball_speedup += 0.5
 
     def score_board(self):  # game's scoring system
-        self.player_scoreboard = self.font2.render(f"{self.player_score}", True, white)
-        self.screen.blit(self.player_scoreboard, (tile_size + (tile_size * 4), tile_size))
+        player_scoreboard = self.font2.render(f"{self.player_score}", True, white)
+        self.screen.blit(player_scoreboard, (tile_size + (tile_size * 4), tile_size))
 
-        self.enemy_scoreboard = self.font2.render(f"{self.enemy_score}", True, white)
-        self.screen.blit(self.enemy_scoreboard, (screen_width - (tile_size * 6), tile_size))
+        enemy_scoreboard = self.font2.render(f"{self.enemy_score}", True, white)
+        self.screen.blit(enemy_scoreboard, (screen_width - (tile_size * 6), tile_size))
 
     def intro_update(self):  # intro screen update function
         self.all_intro_ball.update()
@@ -151,60 +146,83 @@ class Game:
     def intro_draw(self):  # intro screen draw function
         self.screen.fill(black)
 
-        if 0 <= self.counter1 <= 120:  # title's blinking effect
-            self.color = white
-        elif 121 <= self.counter1 <= 150:
-            self.color = black
-
-        if not self.is_start_pressed:  # start button hovering and blinking effect
-            if 1 <= self.counter2 <= 60:
-                self.y_hover += 0.05
-                self.font_size += 0.015
-                self.x_hover += 0.02
-            elif 61 <= self.counter2 <= 120:
-                self.y_hover -= 0.05
-                self.font_size -= 0.015
-                self.x_hover -= 0.02
-        else:
-            if 0 <= self.counter2 <= 5:
-                self.color2 = white
-            elif 6 <= self.counter2 <= 10:
-                self.color2 = black
-
-            if self.counter3 >= 90:
-                self.is_intro = False
-                self.running = True
-
         self.font4 = pygame.font.Font(self.font_face2, int(self.font_size))
-        self.title_txt = self.font1.render(f"Pong", True, self.color)
-        self.start_txt = self.font4.render(f"click anywhere to start", True, self.color2)
+        title_txt = self.font1.render(f"Pong", True, self.get_frame_counts(1))
+        start_txt = self.font4.render(f"click anywhere to start", True, self.get_frame_counts(2))
 
-        self.screen.blit(self.title_txt, (320 - (tile_size * 8), 176 - (tile_size * 5)))
-        self.screen.blit(self.start_txt, (320 - (tile_size * 4 + 15) - self.x_hover,
-                                          176 + (tile_size * 3) - self.y_hover))
+        self.screen.blit(title_txt, (320 - (tile_size * 8), 176 - (tile_size * 5)))
+        self.screen.blit(start_txt, (320 - (tile_size * 4 + 15) - self.x_hover,
+                                     176 + (tile_size * 3) - self.y_hover))
 
-        if not self.is_start_pressed:  # counter loops
-            if self.counter2 <= 120:
-                self.counter2 += 1
+        self.frame_counters(1)
+
+        self.all_intro_ball.draw(self.screen)
+        pygame.display.update()
+
+    def get_frame_counts(self, section):
+        color = white
+        if section == 1:
+            if 0 <= self.counter1 <= 120:  # title's blinking effect
+                color = white
+            elif 121 <= self.counter1 <= 150:
+                color = black
+        elif section == 2:
+            if not self.is_start_pressed:  # start button hovering and blinking effect
+                if 1 <= self.counter2 <= 60:
+                    self.y_hover += 0.05
+                    self.font_size += 0.015
+                    self.x_hover += 0.02
+                elif 61 <= self.counter2 <= 120:
+                    self.y_hover -= 0.05
+                    self.font_size -= 0.015
+                    self.x_hover -= 0.02
             else:
-                self.counter2 = 0
-        else:
-            if self.counter2 <= 10:
-                self.counter2 += 1
+                if 0 <= self.counter2 <= 5:  # start button blink effect
+                    color = white
+                elif 6 <= self.counter2 <= 10:
+                    color = black
+
+                if self.counter3 >= 90:
+                    self.is_intro = False
+                    self.running = True
+        elif section == 3:
+            if self.counter2 <= 30:  # paused blink effect
+                if 0 <= self.counter3 <= 5:
+                    color = white
+                elif 6 <= self.counter3 <= 10:
+                    color = black
+
+        return color
+
+    def frame_counters(self, section):
+        if section == 1:  # intro_draw function
+            if not self.is_start_pressed:  # counter loops
+                if self.counter2 <= 120:
+                    self.counter2 += 1
+                else:
+                    self.counter2 = 0
             else:
-                self.counter2 = 0
-            if self.counter3 <= 90:
+                if self.counter2 <= 10:
+                    self.counter2 += 1
+                else:
+                    self.counter2 = 0
+                if self.counter3 <= 90:
+                    self.counter3 += 1
+                else:
+                    self.counter3 = 0
+
+            if self.counter1 <= 150:
+                self.counter1 += 1
+            else:
+                self.counter1 = 0
+        elif section == 2:  # game_paused function
+            if self.counter3 <= 10:
                 self.counter3 += 1
             else:
                 self.counter3 = 0
 
-        if self.counter1 <= 150:
-            self.counter1 += 1
-        else:
-            self.counter1 = 0
-
-        self.all_intro_ball.draw(self.screen)
-        pygame.display.update()
+            if self.counter2 <= 30:
+                self.counter2 += 1
 
     def intro_screen(self):  # intro screen runner
         while self.is_intro:
@@ -215,33 +233,97 @@ class Game:
 
     def game_paused(self):  # adds a paused indicator on top when paused
         if self.is_paused:
-            if self.counter2 <= 30:
-                if 0 <= self.counter3 <= 5:
-                    self.color = white
-                elif 6 <= self.counter3 <= 10:
-                    self.color = black
+            paused_txt = self.font4.render("PAUSED", True, self.get_frame_counts(3))
+            self.screen.blit(paused_txt, (320 - tile_size, 176 - tile_size * 5))
 
-            self.paused_txt = self.font4.render("PAUSED", True, self.color)
-            self.screen.blit(self.paused_txt, (320 - tile_size, 176 - tile_size * 5))
+            self.frame_counters(2)
 
-            if self.counter3 <= 10:
-                self.counter3 += 1
-            else:
-                self.counter3 = 0
-
-            if self.counter2 <= 30:
-                self.counter2 += 1
-            else:
-                self.color = white
         else:
             self.counter2 = 0
             self.counter3 = 0
 
+    def yes_button(self, text, x, y, width, height):
+        mouse_pos = pygame.mouse.get_pos()
+        click = pygame.mouse.get_pressed()
+
+        button_surface = pygame.Surface((width, height), pygame.SRCALPHA)
+        button_rect = pygame.Rect(x, y, width, height)
+        pygame.draw.rect(button_surface, transparent, button_surface.get_rect())
+
+        if button_rect.collidepoint(mouse_pos):
+            self.font_size = 30
+            if click[0] == 1:
+                return True
+
+        else:
+            self.font_size = 25
+
+        font = pygame.font.Font(self.font_face2, self.font_size)
+
+        yes_txt = font.render(text, True, white)
+        self.screen.blit(yes_txt,
+                         (x + (width // 2 - yes_txt.get_width() // 2), y + (height // 2 - yes_txt.get_height() // 2)))
+
+        return False
+
+    def no_button(self, text, x, y, width, height):
+        mouse_pos = pygame.mouse.get_pos()
+        click = pygame.mouse.get_pressed()
+
+        button_surface = pygame.Surface((width, height), pygame.SRCALPHA)
+        button_rect = pygame.Rect(x, y, width, height)
+        pygame.draw.rect(button_surface, transparent, button_surface.get_rect())
+
+        if button_rect.collidepoint(mouse_pos):
+            self.font_size = 30
+            if click[0] == 1:
+                return True
+
+        else:
+            self.font_size = 25
+
+        font = pygame.font.Font(self.font_face2, self.font_size)
+
+        yes_txt = font.render(text, True, white)
+        self.screen.blit(yes_txt,
+                         (x + (width // 2 - yes_txt.get_width() // 2), y + (height // 2 - yes_txt.get_height() // 2)))
+
+        return False
+
+    def game_over(self):
+        self.screen.fill(black)
+
+        self.ball.winner = "Player 1" if self.player_score == self.max_score else "Player 2"
+        game_over_txt = self.font3.render("Game Over", True, self.get_frame_counts(1))
+        self.winner_txt = self.font5.render(f"{self.ball.winner} won the game!", True, white)
+        final_score_txt = self.font5.render(f"{self.player_score} - {self.enemy_score}", True, white)
+        replay_txt = self.font5.render("Play again?", True, white)
+
+        self.screen.blit(game_over_txt, (320 - tile_size * 9 - 10, 176 - tile_size * 5))
+        self.screen.blit(self.winner_txt, (320 - tile_size * 7, 176 - tile_size * 2))
+        self.screen.blit(final_score_txt, (320 - tile_size * 2, 176 - tile_size))
+        self.screen.blit(replay_txt, (320 - tile_size * 3.5, 176 + tile_size * 2))
+
+        if self.yes_button("Yes", 320 - tile_size * 1.5, 176 + tile_size * 3, 80, 45):
+            self.player_score, self.enemy_score = 0, 0
+            self.ball.ball_speedup = 0
+            self.player.rect.topleft = self.player.default_pos
+            self.enemy.rect.topleft = self.enemy.default_pos
+            self.is_game_over = False
+
+        if self.no_button("No", 320 - tile_size * 1.2, 176 + tile_size * 5, 60, 45):
+            self.running = False
+
+        self.frame_counters(1)
+        pygame.display.update()
+
     def main(self):  # game loop runner
         self.event()
-        self.update()
-        self.draw()
+        if not self.is_game_over:
+            self.update()
+            self.draw()
         self.frame_rate.tick(FPS)
+
 
 
 if __name__ == '__main__':
@@ -249,6 +331,8 @@ if __name__ == '__main__':
     run.intro_screen()
     while run.running:
         run.main()
+        if run.is_game_over:
+            run.game_over()
 
 pygame.quit()
 sys.exit()

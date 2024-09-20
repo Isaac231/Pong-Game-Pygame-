@@ -22,6 +22,7 @@ class Player(pygame.sprite.Sprite):
         self.image.fill(white)
 
         #setups the paddle's rect
+        self.default_pos = (x, y)
         self.x = x
         self.y = y
         self.rect = self.image.get_rect()
@@ -192,10 +193,12 @@ class Ball(pygame.sprite.Sprite):
                 if self.is_scored:
                     if self.ball_direction == 'right':
                         self.game.player_score += 1
-                        self.winner = 'Player 1'
                     if self.ball_direction == 'left':
                         self.game.enemy_score += 1
-                        self.winner = 'Player 2'
+
+                    if self.game.player_score == self.game.max_score or self.game.enemy_score == self.game.max_score:
+                        self.game.is_game_over = True
+
                     self.is_scored = False
 
             if self.rect.x == 0:
@@ -206,6 +209,8 @@ class Ball(pygame.sprite.Sprite):
             if self.rect.x == screen_width - tile_size:
                 self.is_out = True
                 self.winner = 'Player 1'
+
+
 
             if self.rect.y == 0:
                 self.ball_vertical = 'down'
@@ -231,6 +236,7 @@ class Enemy(pygame.sprite.Sprite):
         self.image.fill(white)
 
         #its rect/position
+        self.default_pos = (x, y)
         self.x = x
         self.y = y
         self.rect = self.image.get_rect()
