@@ -28,6 +28,7 @@ class Game:
         self.is_intro = True
         self.is_start_pressed = False
         self.is_game_over = False
+        self.ball_collided = False
         self.winner_txt = None
         self.counter1 = 0
         self.counter2 = 0
@@ -109,29 +110,50 @@ class Game:
     def if_collided(self):  # collision detection function
 
         def check_diagonally(ball, paddle):  # checks if the ball hits the top/bottom corner for diagonal movement
-            if ball.rect.colliderect(paddle.rect) and (paddle.rect.y + tile_size) <= ball.rect.y <= (
-                    paddle.rect.y + tile_size * 2):
-                return ''
-            elif ball.rect.colliderect(paddle.rect) and paddle.rect.y - tile_size <= ball.rect.y <= (
-                    paddle.rect.y):
+            # create a three section for the paddle (top, center, and bottom)
+            paddle_top = pygame.Rect(paddle.rect.x, paddle.rect.y, tile_size, tile_size)
+            paddle_center = pygame.Rect(paddle.rect.x, paddle.rect.y + tile_size, tile_size, tile_size)
+            paddle_bottom = pygame.Rect(paddle.rect.x, paddle.rect.y + tile_size * 2, tile_size, tile_size)
+
+            # get the clipped rect
+            top = paddle_top.clip(ball.rect)
+            center = paddle_center.clip(ball.rect)
+            bottom = paddle_bottom.clip(ball.rect)
+
+            # calculate the area of the clipped rect
+            top_area = top.width * top.height
+            center_area = center.width * center.height
+            bottom_area = bottom.width * bottom.height
+
+            if top_area > center_area and top_area > bottom_area:
                 return 'up'
-            elif ball.rect.colliderect(paddle.rect) and (paddle.rect.y + tile_size * 2) <= ball.rect.y <= (
-                    paddle.rect.y + tile_size * 3):
+            elif bottom_area > center_area and bottom_area > top_area:
                 return 'down'
+            else:
+                return ''
 
         if pygame.sprite.spritecollide(self.ball, self.all_player, False):  # checks if collided for player
-            self.ball.ball_vertical = check_diagonally(self.ball, self.player)
+            if not self.ball_collided:
+                self.ball.ball_vertical = check_diagonally(self.ball, self.player)
 
-            self.ball.ball_direction = 'right'
-            if 0 <= self.ball.ball_speedup <= 32:
-                self.ball.ball_speedup += 0.5
+                self.ball.ball_direction = 'right'
+                if 0 <= self.ball.ball_speedup <= 32:
+                    self.ball.ball_speedup += 0.5
+
+                self.ball_collided = True
+        else:
+            self.ball_collided = False
 
         if pygame.sprite.spritecollide(self.ball, self.all_enemy, False):  # checks if collided for enemy
-            self.ball.ball_vertical = check_diagonally(self.ball, self.enemy)
+            if not self.ball_collided:
+                self.ball.ball_vertical = check_diagonally(self.ball, self.enemy)
 
-            self.ball.ball_direction = 'left'
-            if 0 <= self.ball.ball_speedup <= 32:
-                self.ball.ball_speedup += 0.5
+                self.ball.ball_direction = 'left'
+                if 0 <= self.ball.ball_speedup <= 32:
+                    self.ball.ball_speedup += 0.5
+                self.ball_collided = True
+        else:
+            self.ball_collided = False
 
     def score_board(self):  # game's scoring system
         player_scoreboard = self.font2.render(f"{self.player_score}", True, white)
@@ -323,7 +345,6 @@ class Game:
             self.update()
             self.draw()
         self.frame_rate.tick(FPS)
-
 
 
 if __name__ == '__main__':
