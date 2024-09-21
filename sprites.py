@@ -205,12 +205,9 @@ class Ball(pygame.sprite.Sprite):
                 self.is_out = True
                 self.winner = 'Player 2'
 
-
             if self.rect.x == screen_width - tile_size:
                 self.is_out = True
                 self.winner = 'Player 1'
-
-
 
             if self.rect.y == 0:
                 self.ball_vertical = 'down'

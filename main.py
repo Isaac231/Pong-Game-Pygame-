@@ -108,15 +108,15 @@ class Game:
 
     def if_collided(self):  # collision detection function
 
-        def check_diagonally(ball, rect):  # checks if the ball hits the top/bottom corner for diagonal movement
-            if ball.rect.colliderect(rect.rect) and (rect.rect.y + tile_size) <= ball.rect.y <= (
-                    rect.rect.y + tile_size * 2):
+        def check_diagonally(ball, paddle):  # checks if the ball hits the top/bottom corner for diagonal movement
+            if ball.rect.colliderect(paddle.rect) and (paddle.rect.y + tile_size) <= ball.rect.y <= (
+                    paddle.rect.y + tile_size * 2):
                 return ''
-            elif ball.rect.colliderect(rect.rect) and rect.rect.y - tile_size <= ball.rect.y <= (
-                    rect.rect.y):
+            elif ball.rect.colliderect(paddle.rect) and paddle.rect.y - tile_size <= ball.rect.y <= (
+                    paddle.rect.y):
                 return 'up'
-            elif ball.rect.colliderect(rect.rect) and (rect.rect.y + tile_size * 2) <= ball.rect.y <= (
-                    rect.rect.y + tile_size * 3):
+            elif ball.rect.colliderect(paddle.rect) and (paddle.rect.y + tile_size * 2) <= ball.rect.y <= (
+                    paddle.rect.y + tile_size * 3):
                 return 'down'
 
         if pygame.sprite.spritecollide(self.ball, self.all_player, False):  # checks if collided for player
@@ -150,8 +150,8 @@ class Game:
         title_txt = self.font1.render(f"Pong", True, self.get_frame_counts(1))
         start_txt = self.font4.render(f"click anywhere to start", True, self.get_frame_counts(2))
 
-        self.screen.blit(title_txt, (320 - (tile_size * 8), 176 - (tile_size * 5)))
-        self.screen.blit(start_txt, (320 - (tile_size * 4 + 15) - self.x_hover,
+        self.screen.blit(title_txt, ((screen_width // 2 - title_txt.get_width() // 2), 176 - (tile_size * 5)))
+        self.screen.blit(start_txt, ((screen_width // 2 - start_txt.get_width() // 2) - self.x_hover,
                                      176 + (tile_size * 3) - self.y_hover))
 
         self.frame_counters(1)
