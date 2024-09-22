@@ -46,7 +46,7 @@ class Game:
         self.font_size = 15
         self.player_score = 0
         self.enemy_score = 0
-        self.max_score = 3
+        self.max_score = 10
 
         self.all_sprite = pygame.sprite.Group()
         self.all_player = pygame.sprite.GroupSingle()
