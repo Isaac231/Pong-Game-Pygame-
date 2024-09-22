@@ -1,6 +1,8 @@
 import pygame
 from config import *
 import sys
+from game_sounds import play_ball_impact, play_ball_out, play_intro_bgm, play_main_bgm, pause_main_bgm, resume_main_bgm, \
+    restart_main_bgm, play_score_sfx, play_count_sfx, play_pause_sfx, play_start_sfx, play_end_sfx, play_game_over_sfx
 
 from sprites import Player, Ball, Enemy
 
@@ -24,12 +26,18 @@ class Game:
         self.font5 = pygame.font.Font(self.font_face2, 25)
 
         self.running = False
+        self.sound_played = False
+        self.count_played = False
+        self.bgm_playing = False
+        self.game_over_played = False
+        self.scored = False
         self.is_paused = False
         self.is_intro = True
         self.is_start_pressed = False
         self.is_game_over = False
         self.ball_collided = False
         self.winner_txt = None
+        self.collision_counter = 0
         self.counter1 = 0
         self.counter2 = 0
         self.counter3 = 0
@@ -38,7 +46,7 @@ class Game:
         self.font_size = 15
         self.player_score = 0
         self.enemy_score = 0
-        self.max_score = 10
+        self.max_score = 3
 
         self.all_sprite = pygame.sprite.Group()
         self.all_player = pygame.sprite.GroupSingle()
@@ -74,11 +82,22 @@ class Game:
             if event.type == pygame.KEYDOWN and not self.is_game_over:  # pauses the game
                 if event.key == pygame.K_SPACE:
                     self.is_paused = not self.is_paused
+                    if self.is_paused:
+                        play_pause_sfx()
+                        pause_main_bgm()
+                    elif not self.is_paused:
+                        resume_main_bgm()
 
     def update(self):  # game loop draw function
         self.all_sprite.update()
 
         if self.ball.is_out and not self.is_paused:  # ball timer when out of bounce
+            if not self.count_played:
+                pause_main_bgm()
+                if self.player_score != self.max_score - 1 and self.enemy_score != self.max_score - 1:
+                    play_count_sfx()
+                self.count_played = True
+
             self.ball.frame_count += 1
             if self.ball.frame_count >= 60:
                 self.ball.countdown -= 1
@@ -87,20 +106,46 @@ class Game:
                     self.ball.countdown = 3
                     self.ball.is_ball_resets = True
                     self.ball.is_out = False
+                    self.sound_played = False
 
         if not self.is_paused:
             self.if_collided()
 
     def draw(self):  # game loop draw function
         self.screen.fill(black)
-        self.all_sprite.draw(self.screen)
+
+        divider_line = pygame.Surface((5, 480))
+        divider_line.fill(white)
+        divider_rect = divider_line.get_rect(midtop=(320, 0))
+        self.screen.blit(divider_line, divider_rect)
 
         if self.ball.is_out:
-            self.winner_txt = self.font2.render(f"{self.ball.winner} scores!", True, white)
-            countdown_txt = self.font1.render(f"{self.ball.countdown}", True, white)
+            if self.player_score != self.max_score and self.enemy_score != self.max_score:
+                if self.ball.ball_direction == 'right' and not self.scored:
+                    self.player_score += 1
+                    play_score_sfx()
+                    self.scored = True
+                if self.ball.ball_direction == 'left' and not self.scored:
+                    self.enemy_score += 1
+                    play_score_sfx()
+                    self.scored = True
 
-            self.screen.blit(self.winner_txt, (320 - (tile_size * 8), 176 - (tile_size * 2)))
-            self.screen.blit(countdown_txt, (320 - (tile_size * 2), 176 - tile_size))
+            if not self.sound_played:
+                if self.player_score != self.max_score and self.enemy_score != self.max_score:
+                    play_ball_out()
+                else:
+                    play_end_sfx()
+
+                self.sound_played = True
+
+            if self.player_score != self.max_score and self.enemy_score != self.max_score:
+                self.winner_txt = self.font2.render(f"{self.ball.winner} scores!", True, white, pygame.SRCALPHA)
+                countdown_txt = self.font3.render(f"{self.ball.countdown}", True, white, pygame.SRCALPHA)
+
+                self.screen.blit(self.winner_txt, (320 - (tile_size * 8) + 5, 176 - (tile_size + 10)))
+                self.screen.blit(countdown_txt, (320 - tile_size, 176 + tile_size))
+
+        self.all_sprite.draw(self.screen)
 
         self.game_paused()
         self.score_board()
@@ -133,27 +178,48 @@ class Game:
                 return ''
 
         if pygame.sprite.spritecollide(self.ball, self.all_player, False):  # checks if collided for player
-            if not self.ball_collided:
-                self.ball.ball_vertical = check_diagonally(self.ball, self.player)
+            if self.collision_counter == 0:
+                self.ball_collided = True
+                play_ball_impact()  # play ball collide sfx
+
+                self.ball.ball_vertical = check_diagonally(self.ball, self.player)  # checks if it will move diagonally
 
                 self.ball.ball_direction = 'right'
                 if 0 <= self.ball.ball_speedup <= 32:
-                    self.ball.ball_speedup += 0.5
+                    self.ball.ball_speedup += 0.5  # gradually increase ball speed everytime it collides with paddles
 
-                self.ball_collided = True
+                self.collision_counter = 1
         else:
-            self.ball_collided = False
+            if self.ball_collided:
+                self.ball_collided = False
+
+            if self.collision_counter > 0:
+                self.collision_counter += 1
+
+            if self.collision_counter > 0 and self.collision_counter >= 30:
+                self.collision_counter = 0
 
         if pygame.sprite.spritecollide(self.ball, self.all_enemy, False):  # checks if collided for enemy
-            if not self.ball_collided:
+            if self.collision_counter == 0:
+                self.ball_collided = True
+                play_ball_impact()  # play ball collide sfx
+
                 self.ball.ball_vertical = check_diagonally(self.ball, self.enemy)
 
                 self.ball.ball_direction = 'left'
                 if 0 <= self.ball.ball_speedup <= 32:
                     self.ball.ball_speedup += 0.5
-                self.ball_collided = True
+
+                self.collision_counter = 1
         else:
-            self.ball_collided = False
+            if self.ball_collided:
+                self.ball_collided = False
+
+            if self.collision_counter > 0:
+                self.collision_counter += 1
+
+            if self.collision_counter > 0 and self.collision_counter >= 30:
+                self.collision_counter = 0
 
     def score_board(self):  # game's scoring system
         player_scoreboard = self.font2.render(f"{self.player_score}", True, white)
@@ -167,6 +233,11 @@ class Game:
 
     def intro_draw(self):  # intro screen draw function
         self.screen.fill(black)
+
+        if self.is_intro:
+            if not self.bgm_playing:
+                play_intro_bgm()
+                self.bgm_playing = True
 
         self.font4 = pygame.font.Font(self.font_face2, int(self.font_size))
         title_txt = self.font1.render(f"Pong", True, self.get_frame_counts(1))
@@ -199,6 +270,10 @@ class Game:
                     self.font_size -= 0.015
                     self.x_hover -= 0.02
             else:
+                if not self.sound_played:
+                    play_start_sfx()
+                    self.sound_played = True
+
                 if 0 <= self.counter2 <= 5:  # start button blink effect
                     color = white
                 elif 6 <= self.counter2 <= 10:
@@ -206,13 +281,16 @@ class Game:
 
                 if self.counter3 >= 90:
                     self.is_intro = False
+                    self.bgm_playing = False
+                    self.sound_played = False
+                    play_intro_bgm(2)
                     self.running = True
         elif section == 3:
             if self.counter2 <= 30:  # paused blink effect
                 if 0 <= self.counter3 <= 5:
                     color = white
                 elif 6 <= self.counter3 <= 10:
-                    color = black
+                    color = transparent
 
         return color
 
@@ -255,7 +333,7 @@ class Game:
 
     def game_paused(self):  # adds a paused indicator on top when paused
         if self.is_paused:
-            paused_txt = self.font4.render("PAUSED", True, self.get_frame_counts(3))
+            paused_txt = self.font4.render("PAUSED", True, self.get_frame_counts(3), pygame.SRCALPHA)
             self.screen.blit(paused_txt, (320 - tile_size, 176 - tile_size * 5))
 
             self.frame_counters(2)
@@ -315,6 +393,10 @@ class Game:
     def game_over(self):
         self.screen.fill(black)
 
+        if not self.game_over_played:
+            play_game_over_sfx()
+            self.game_over_played = True
+
         self.ball.winner = "Player 1" if self.player_score == self.max_score else "Player 2"
         game_over_txt = self.font3.render("Game Over", True, self.get_frame_counts(1))
         self.winner_txt = self.font5.render(f"{self.ball.winner} won the game!", True, white)
@@ -332,14 +414,23 @@ class Game:
             self.player.rect.topleft = self.player.default_pos
             self.enemy.rect.topleft = self.enemy.default_pos
             self.is_game_over = False
+            self.game_over_played = False
+            play_score_sfx()
+            restart_main_bgm()
 
         if self.no_button("No", 320 - tile_size * 1.2, 176 + tile_size * 5, 60, 45):
+            play_ball_out()
             self.running = False
+            pygame.time.delay(1000)
 
         self.frame_counters(1)
         pygame.display.update()
 
     def main(self):  # game loop runner
+        if self.running and not self.is_paused and not self.is_game_over:
+            if not self.bgm_playing:
+                play_main_bgm()
+                self.bgm_playing = True
         self.event()
         if not self.is_game_over:
             self.update()

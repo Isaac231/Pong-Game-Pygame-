@@ -1,5 +1,5 @@
 from random import randint
-
+from game_sounds import play_hits_wall, restart_main_bgm
 import pygame
 from config import *
 
@@ -8,7 +8,7 @@ class Player(pygame.sprite.Sprite):
     def __init__(self, game, x, y):
         super().__init__()
 
-        #groups this class to Game class' groups
+        # groups this class to Game class' groups
         self.game = game
         self.group = self.game.all_sprite
         self.solo_group = self.game.all_player
@@ -17,11 +17,11 @@ class Player(pygame.sprite.Sprite):
         self.player_width = tile_size
         self.player_height = tile_size * 3
 
-        #setups the paddle's image and color
+        # setups the paddle's image and color
         self.image = pygame.Surface((self.player_width, self.player_height))
         self.image.fill(white)
 
-        #setups the paddle's rect
+        # setups the paddle's rect
         self.default_pos = (x, y)
         self.x = x
         self.y = y
@@ -29,16 +29,33 @@ class Player(pygame.sprite.Sprite):
         self.rect.x = self.x
         self.rect.y = self.y
 
-    def update(self): # Player class update function
+        self.edge_hits = False
+
+    def update(self):  # Player class update function
         if not self.game.is_paused:
             self.movement()
 
-    def movement(self): #Player's Control Function
+    def movement(self):  # Player's Control Function
         key = pygame.key.get_pressed()
 
         if key[pygame.K_w]:
+            if self.rect.y == 0 and not self.edge_hits:
+                self.edge_hits = True
+                play_hits_wall()
+
+            if self.rect.y != 0 and self.edge_hits:
+                self.edge_hits = False
+
             self.rect.y -= entity_speed
+
         if key[pygame.K_s]:
+            if self.rect.y == 384 and not self.edge_hits:
+                self.edge_hits = True
+                play_hits_wall()
+
+            if self.rect.y != 384 and self.edge_hits:
+                self.edge_hits = False
+
             self.rect.y += entity_speed
 
         self.rect.y = max(0, min(screen_height - self.player_height, self.rect.y))
@@ -48,13 +65,13 @@ class Ball(pygame.sprite.Sprite):
     def __init__(self, game, ball_type: str = 'main'):
         super().__init__()
 
-        #groups this class to Game class too
+        # groups this class to Game class too
         self.game = game
         self.ball_type = ball_type
         self.group = self.game.all_sprite
         self.solo_group = self.game.all_ball
 
-        #the ball's size
+        # the ball's size
         self.ball_width = tile_size
         self.ball_height = tile_size
 
@@ -87,7 +104,7 @@ class Ball(pygame.sprite.Sprite):
         self.b = 1
         self.color = None
 
-    def update(self): # Ball class update function
+    def update(self):  # Ball class update function
         if self.ball_type == 'intro':
             self.color_change()
             self.intro_movement()
@@ -96,22 +113,22 @@ class Ball(pygame.sprite.Sprite):
                 self.movement()
                 self.ball_reset()
 
-    def color_change(self): # ball color switching effect function
-        if 254 >= self.r >= 1 and self.g == 1 and self.b == 1: # r
+    def color_change(self):  # ball color switching effect function
+        if 254 >= self.r >= 1 and self.g == 1 and self.b == 1:  # r
             self.r += 1
             self.color = (self.r, self.g, self.b)
-        elif self.r <= 255 and 254 >= self.g >= 1 and self.b == 1: # g
+        elif self.r <= 255 and 254 >= self.g >= 1 and self.b == 1:  # g
             self.r -= 1
             self.g += 1
             self.color = (self.r, self.g, self.b)
-        elif self.g <= 255 and self.r == 1 and 254 >= self.b >= 1: # b
+        elif self.g <= 255 and self.r == 1 and 254 >= self.b >= 1:  # b
             self.g -= 1
             self.b += 1
             self.color = (self.r, self.g, self.b)
-        elif self.b == 255 and self.g == 1 and 1 <= self.r <= 254: # r + b
+        elif self.b == 255 and self.g == 1 and 1 <= self.r <= 254:  # r + b
             self.r += 1
             self.color = (self.r, self.g, self.b)
-        elif self.b <= 255 and self.r == 255 and 1 <= self.g <= 254: #r + g
+        elif self.b <= 255 and self.r == 255 and 1 <= self.g <= 254:  # r + g
             self.g += 1
             self.b -= 1
             self.color = (self.r, self.g, self.b)
@@ -120,7 +137,7 @@ class Ball(pygame.sprite.Sprite):
             self.b += 1
             self.color = (self.r, self.g, self.b)
         elif self.g == 255 and self.b == 255 and 1 <= self.r <= 254:
-            self.r +=1
+            self.r += 1
             self.color = (self.r, self.g, self.b)
         elif self.g <= 255 and self.b <= 255 and self.r <= 255:
             self.r -= 1
@@ -130,7 +147,7 @@ class Ball(pygame.sprite.Sprite):
 
         self.image.fill(self.color)
 
-    def movement(self): #balls movement directions
+    def movement(self):  # balls movement directions
         if not self.is_out:
             if self.ball_direction == 'left':
                 self.rect.x -= ball_speed + self.ball_speedup
@@ -148,7 +165,7 @@ class Ball(pygame.sprite.Sprite):
         if self.rect.x == 0 or self.rect.x == screen_width - tile_size:
             self.is_scored = True
 
-    def intro_movement(self): # this the function for the ball in the intro screen
+    def intro_movement(self):  # this the function for the ball in the intro screen
         if self.ball_direction == 'left':
             self.rect.x -= 8
         elif self.ball_direction == 'right':
@@ -163,76 +180,83 @@ class Ball(pygame.sprite.Sprite):
         self.rect.y = max(0, min(screen_height - self.ball_height, self.rect.y))
 
         if self.rect.x == 0:
+            play_hits_wall()
             self.ball_direction = 'right'
             self.ball_vertical = 'up' if randint(1, 2) == 1 else 'down'
             self.ball_vertical = self.ball_vertical if randint(1, 2) == 1 else ''
 
         if self.rect.x == screen_width - tile_size:
+            play_hits_wall()
             self.ball_direction = 'left'
             self.ball_vertical = 'up' if randint(1, 2) == 1 else 'down'
             self.ball_vertical = self.ball_vertical if randint(1, 2) == 1 else ''
 
         if self.rect.y == 0:
+            play_hits_wall()
             self.ball_vertical = 'down'
             self.ball_direction = 'left' if randint(1, 2) == 1 else 'right'
             self.ball_direction = self.ball_direction if randint(1, 2) == 1 else ''
 
         if self.rect.y == screen_height - tile_size:
+            play_hits_wall()
             self.ball_vertical = 'up'
             self.ball_direction = 'left' if randint(1, 2) == 1 else 'right'
             self.ball_direction = self.ball_direction if randint(1, 2) == 1 else ''
 
-    def ball_reset(self): # resets the ball when someone scores
-            if self.is_ball_resets:
-                self.ball_vertical = ''
-                self.rect.x = 320
-                self.rect.y = 176 + tile_size * 1
-                self.ball_speedup = 0
-                self.is_ball_resets = False
+    def ball_reset(self):  # resets the ball when someone scores
+        if self.is_ball_resets:
+            self.ball_vertical = ''
+            self.rect.x = 320 - tile_size // 2
+            self.rect.y = 176 + tile_size
+            self.ball_speedup = 0
+            self.is_ball_resets = False
 
-                if self.is_scored:
-                    if self.ball_direction == 'right':
-                        self.game.player_score += 1
-                    if self.ball_direction == 'left':
-                        self.game.enemy_score += 1
+            if self.is_scored:
+                if self.game.player_score == self.game.max_score or self.game.enemy_score == self.game.max_score:
+                    self.game.is_game_over = True
 
-                    if self.game.player_score == self.game.max_score or self.game.enemy_score == self.game.max_score:
-                        self.game.is_game_over = True
+                self.game.scored = False
+                self.game.count_played = False
+                self.is_scored = False
 
-                    self.is_scored = False
+                if not self.game.is_game_over:
+                    restart_main_bgm()
 
-            if self.rect.x == 0:
-                self.is_out = True
-                self.winner = 'Player 2'
+        if self.rect.x == 0:
+            self.is_out = True
+            self.winner = 'Player 2'
 
-            if self.rect.x == screen_width - tile_size:
-                self.is_out = True
-                self.winner = 'Player 1'
+        if self.rect.x == screen_width - tile_size:
+            self.is_out = True
+            self.winner = 'Player 1'
 
-            if self.rect.y == 0:
-                self.ball_vertical = 'down'
+        if self.rect.y == 0:
+            play_hits_wall()
+            self.ball_vertical = 'down'
 
-            if self.rect.y == screen_height - tile_size:
-                self.ball_vertical = 'up'
+        if self.rect.y == screen_height - tile_size:
+            play_hits_wall()
+            self.ball_vertical = 'up'
+
 
 class Enemy(pygame.sprite.Sprite):
     def __init__(self, game, x, y):
         super().__init__()
 
-        #groups in game class
+        # groups in game class
         self.game = game
         self.group = self.game.all_sprite
         self.solo_group = self.game.all_enemy
 
-        #its size
+        # its size
         self.enemy_width = tile_size
         self.enemy_height = tile_size * 3
 
-        #its image and color
+        # its image and color
         self.image = pygame.Surface((self.enemy_width, self.enemy_height))
         self.image.fill(white)
 
-        #its rect/position
+        # its rect/position
         self.default_pos = (x, y)
         self.x = x
         self.y = y
@@ -240,15 +264,33 @@ class Enemy(pygame.sprite.Sprite):
         self.rect.x = self.x
         self.rect.y = self.y
 
-    def update(self): # update function of enemy class
+        self.edge_hits = False
+
+    def update(self):  # update function of enemy class
         if not self.game.is_paused:
             self.movement()
 
-    def movement(self): # its controls
+    def movement(self):  # its controls
         key = pygame.key.get_pressed()
+
         if key[pygame.K_UP]:
+            if self.rect.y == 0 and not self.edge_hits:
+                self.edge_hits = True
+                play_hits_wall()
+
+            if self.rect.y != 0 and self.edge_hits:
+                self.edge_hits = False
+
             self.rect.y -= entity_speed
+
         if key[pygame.K_DOWN]:
+            if self.rect.y == 384 and not self.edge_hits:
+                self.edge_hits = True
+                play_hits_wall()
+
+            if self.rect.y != 384 and self.edge_hits:
+                self.edge_hits = False
+
             self.rect.y += entity_speed
 
         self.rect.y = max(0, min(screen_height - self.enemy_height, self.rect.y))
