@@ -53,7 +53,7 @@ class Game:
         self.font_size = 15
         self.player_score = 0
         self.enemy_score = 0
-        self.max_score = 2
+        self.max_score = 10
 
         # ----------SPRITES SETUP----------
         self.all_sprite = pygame.sprite.Group()
