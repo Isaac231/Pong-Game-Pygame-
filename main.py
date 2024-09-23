@@ -185,7 +185,7 @@ class Game:
                 self.ball.ball_vertical = check_diagonally(self.ball, self.player)  # checks if it will move diagonally
 
                 self.ball.ball_direction = 'right'
-                if 0 <= self.ball.ball_speedup <= 32:
+                if 0 <= self.ball.ball_speedup <= 28:
                     self.ball.ball_speedup += 0.5  # gradually increase ball speed everytime it collides with paddles
 
                 self.collision_counter = 1
@@ -207,7 +207,7 @@ class Game:
                 self.ball.ball_vertical = check_diagonally(self.ball, self.enemy)
 
                 self.ball.ball_direction = 'left'
-                if 0 <= self.ball.ball_speedup <= 32:
+                if 0 <= self.ball.ball_speedup <= 28:
                     self.ball.ball_speedup += 0.5
 
                 self.collision_counter = 1
